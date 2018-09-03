@@ -107,8 +107,13 @@ function bubbles.install(src)
 	while game.exists(string.format("%s%03d",string.sub("PSPEMU00",1,-3),i)) do
 		i+=1
 	end
-	local lastid = string.format("%s%03d",string.sub("PSPEMU00",1,-3),i)
-
+	--use the gameid as the folder unless is already used
+	if files.exists("ur0:appmeta/"..src.gameid.."/") then
+		local lastid = string.format("%s%03d",string.sub("PSPEMU00",1,-3),i)
+	else
+		lastid = src.gameid
+	end
+	
 	local work_dir = "ux0:data/ABMVPK/"
 	files.mkdir(work_dir)
 
