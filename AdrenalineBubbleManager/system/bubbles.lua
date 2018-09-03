@@ -74,7 +74,7 @@ function bubbles.scan()
 				--Customized
 				fp:seek("set",0x0C)
 				local custom = str2int(fp:read(4))
-				if custom < 0 or custom > 1 then custom = 0 end
+				if custom < 0 or custom > 1 then custom = 1 end
 				table.insert(bubbles.list[i].lines, custom)
 
 				--Path
@@ -99,7 +99,7 @@ function bubbles.install(src)
 	local bubble_title,timg = nil,nil
 
 	if src.title then
-		bubble_title = osk.init(strings.titleosk, src.title or strings.putnameosk, 128, __OSK_TYPE_DEFAULT, __OSK_MODE_TEXT)
+		bubble_title = osk.init(STRINGS_TITLE_OSK, src.title or STRINGS_NAME_OSK, 128, __OSK_TYPE_DEFAULT, __OSK_MODE_TEXT)
 	end
 	if not bubble_title or (string.len(bubble_title)<=0) then bubble_title = src.title or src.name end
 
@@ -107,13 +107,7 @@ function bubbles.install(src)
 	while game.exists(string.format("%s%03d",string.sub("PSPEMU00",1,-3),i)) do
 		i+=1
 	end
-
-	--use the gameid as the folder unless is already used
-	if files.exists("ur0:appmeta/"..src.gameid.."/") then
-		lastid = string.format("%s%03d",string.sub("PSPEMU00",1,-3),i)
-	else
-		lastid = src.gameid
-	end
+	local lastid = string.format("%s%03d",string.sub("PSPEMU00",1,-3),i)
 
 	local work_dir = "ux0:data/ABMVPK/"
 	files.mkdir(work_dir)
@@ -126,220 +120,265 @@ function bubbles.install(src)
 	--Resources to 8bits
 	buttons.homepopup(0)
 
-		------------------------------icon0 & startup
-		timg = game.geticon0(src.path)
+	------------------------------icon0 & startup
+	timg = game.geticon0(src.path)
+
+	if back2 then back2:blit(0,0) end
+	draw.fillrect(0,0,960,30, color.shine)
+	screen.print(10,10,STRINGS_CONVERTING)
+	screen.print(950,10,"ICON0.PNG",1, color.white, color.blue, __ARIGHT)
+
+	if timg then
+		timg:center()
+		timg:blit(480,272)
+	end
+	screen.flip()
+
+	if timg then
+		timg:reset()
+		if src.nostretched then
+			image.save(timg:copyscale(128,128),work_dir.."sce_sys/icon0.png", 1)
+		else
+			image.save(image.nostretched(timg, colors[src.selcc]), work_dir.."sce_sys/icon0.png", 1)
+		end
+			
+		--startup.png
+		if src.setpack == STRINGS_OPTION_MSG_NO or src.setpack == STRINGS_PSP_PSX_BUBBLES then
+			image.save(timg, work_dir.."sce_sys/livearea/contents/startup.png", 1)
+		else
+			if files.exists(__PATHSETS..src.setpack.."/startup.png") then
+				timg = image.load(__PATHSETS..src.setpack.."/startup.png")
+
+				image.save(image.startup(timg), work_dir.."sce_sys/livearea/contents/startup.png", 1)
+			else
+				image.save(timg, work_dir.."sce_sys/livearea/contents/startup.png", 1)
+			end
+		end
+	else
+		files.copy("bubbles/sce_sys_lman/icon0.png", work_dir.."sce_sys")
+		files.copy("bubbles/sce_sys_lman/startup.png", work_dir.."sce_sys/livearea/contents/")
+	end
+
+	------------------------------pic0 (boot) & bg0
+	if src.setpack == STRINGS_OPTION_MSG_NO or src.setpack == STRINGS_PSP_PSX_BUBBLES then
+		if src.setpack == STRINGS_PSP_PSX_BUBBLES or src.orig then
+			if src.type == "ME" then--PS1 Game
+				timg = PSX_IMG
+			else
+				timg = PSP_IMG
+			end
+		else
+			timg = game.getpic1(src.path)
+		end
 
 		if back2 then back2:blit(0,0) end
 		draw.fillrect(0,0,960,30, color.shine)
-		screen.print(10,10,strings.convert)
-		screen.print(950,10,"ICON0.PNG",1, color.white, color.blue, __ARIGHT)
+		screen.print(10,10,STRINGS_CONVERTING)
+		screen.print(950,10,"PIC0.PNG",1, color.white, color.gray, __ARIGHT)
 
 		if timg then
-			timg:resize(252,151)
+			timg:scale(75)
 			timg:center()
 			timg:blit(480,272)
 		end
 		screen.flip()
+		if src.setpack == STRINGS_PSP_PSX_BUBBLES or src.orig then os.delay(250) end
 
-		if timg then
-			timg:reset()
-			if src.nostretched then
-				image.save(timg:copyscale(128,128),work_dir.."sce_sys/icon0.png", 1)
+		if src.setpack == STRINGS_PSP_PSX_BUBBLES or src.orig then
+			if src.type == "ME" then--PS1 Game
+				files.copy("bubbles/sce_sys_lman/ps1/bg0.png", work_dir.."sce_sys/livearea/contents/")
+				files.copy("bubbles/sce_sys_lman/ps1/pic0.png", work_dir.."sce_sys/")
 			else
-				image.save(image.nostretched(timg, colors[src.selcc]), work_dir.."sce_sys/icon0.png", 1)
-			end
-			
-			--startup.png
-			if __SET == 0 or __SET == 6 then
-				image.save(timg, work_dir.."sce_sys/livearea/contents/startup.png", 1)
-			else
-				if files.exists(__PATHSETS.."Set"..__SET.."/startup.png") then
-					timg = image.load(__PATHSETS.."Set"..__SET.."/startup.png")
-
-					image.save(image.startup(timg), work_dir.."sce_sys/livearea/contents/startup.png", 1)
-				else
-					image.save(timg, work_dir.."sce_sys/livearea/contents/startup.png", 1)
-				end
+				files.copy("bubbles/sce_sys_lman/psp/bg0.png", work_dir.."sce_sys/livearea/contents/")
+				files.copy("bubbles/sce_sys_lman/psp/pic0.png", work_dir.."sce_sys/")
 			end
 		else
-			files.copy("bubbles/sce_sys_lman/icon0.png", work_dir.."sce_sys")
-			files.copy("bubbles/sce_sys_lman/startup.png", work_dir.."sce_sys/livearea/contents/")
-		end
-
-		------------------------------pic0 (boot) & bg0
-		if __SET == 0 or __SET == 6 then
-
-			if __SET == 6 then
-				timg = game.getpic1(src.path)
-			else
-				if src.type == "ME" then--PS1 Game
-					image.load("bubbles/sce_sys_lman/ps1/bg0.png")
-				else
-					image.load("bubbles/sce_sys_lman/psp/bg0.png")
-				end
-			end
-
-			if back2 then back2:blit(0,0) end
-			draw.fillrect(0,0,960,30, color.shine)
-			screen.print(10,10,strings.convert)
-			screen.print(950,10,"PIC0.PNG",1, color.white, color.gray, __ARIGHT)
-
 			if timg then
-				timg:resize(252,151)
-				timg:center()
-				timg:blit(480,272)
-			end
-			screen.flip()
-
-			if __SET == 6 then
-				if timg then
-					timg:reset()
-					image.save(timg:copyscale(960,544), work_dir.."sce_sys/pic0.png", 1)
-					files.copy(work_dir.."sce_sys/pic0.png", work_dir.."sce_sys/livearea/contents")
-					files.rename(work_dir.."/sce_sys/livearea/contents/pic0.png","bg0.png")
-				else
-					if src.type == "ME" then--PS1 Game
-						files.copy("bubbles/sce_sys_lman/ps1/bg0.png", work_dir.."sce_sys/livearea/contents/")
-						files.copy("bubbles/sce_sys_lman/ps1/pic0.png", work_dir.."sce_sys/")
-					else
-						files.copy("bubbles/sce_sys_lman/psp/bg0.png", work_dir.."sce_sys/livearea/contents/")
-					end
-				end
+				timg:reset()
+				image.save(timg:copyscale(960,544), work_dir.."sce_sys/pic0.png", 1)
+				files.copy(work_dir.."sce_sys/pic0.png", work_dir.."sce_sys/livearea/contents")
+				files.rename(work_dir.."/sce_sys/livearea/contents/pic0.png","bg0.png")
 			else
 				if src.type == "ME" then--PS1 Game
 					files.copy("bubbles/sce_sys_lman/ps1/bg0.png", work_dir.."sce_sys/livearea/contents/")
 					files.copy("bubbles/sce_sys_lman/ps1/pic0.png", work_dir.."sce_sys/")
 				else
 					files.copy("bubbles/sce_sys_lman/psp/bg0.png", work_dir.."sce_sys/livearea/contents/")
+					files.copy("bubbles/sce_sys_lman/psp/pic0.png", work_dir.."sce_sys/")
+				end
+			end
+		end
+
+	else
+		--"PIC0.PNG", 	 w = 960,	h = 544			SETX (1 to 5)
+
+		local setimg = false
+		timg = image.load(__PATHSETS..src.setpack.."/PIC0.PNG")
+
+		if timg then setimg = true
+		else timg = game.getpic1(src.path) end
+		
+		if back2 then back2:blit(0,0) end
+		draw.fillrect(0,0,960,30, color.shine)
+		screen.print(10,10,STRINGS_CONVERTING)
+		screen.print(950,10,"PIC0.PNG",1, color.white, color.gray, __ARIGHT)
+
+		if timg then
+			timg:scale(75)
+			timg:center()
+			timg:blit(480,272)
+		end
+		screen.flip()
+		if src.setpack == STRINGS_PSP_PSX_BUBBLES or src.orig then os.delay(250) end
+
+		if timg then
+			timg:reset()
+			local scale = false
+			if timg:getrealw() != 960 or timg:getrealh() != 544 then
+				timg=timg:copyscale(960,544)
+				scale = true
+			end
+
+			if __8PNG == 1 then
+				image.save(timg, work_dir.."sce_sys/pic0.png", 1)
+			else
+				if scale then
+					image.save(timg, work_dir.."sce_sys/pic0.png", 1)
+				elseif setimg then
+					files.copy(__PATHSETS..src.setpack.."/PIC0.PNG", work_dir.."sce_sys/")
+				else
+					image.save(timg, work_dir.."sce_sys/pic0.png", 1)
 				end
 			end
 
 		else
-			--"PIC0.PNG", 	 w = 960,	h = 544			SETX (1 to 5)
-
-			local setimg = false
-			timg = image.load(__PATHSETS.."Set"..__SET.."/PIC0.PNG")
-
-			if timg then setimg = true
-			else timg = game.getpic1(src.path) end
-			
-			if back2 then back2:blit(0,0) end
-			draw.fillrect(0,0,960,30, color.shine)
-			screen.print(10,10,strings.convert)
-			screen.print(950,10,"PIC0.PNG",1, color.white, color.gray, __ARIGHT)
-
-			if timg then
-				timg:resize(252,151)
-				timg:center()
-				timg:blit(480,272)
-			end
-			screen.flip()
-
-			if timg then
-				timg:reset()
-				local scale = false
-				if timg:getrealw() != 960 or timg:getrealh() != 544 then
-					timg=timg:copyscale(960,544)
-					scale = true
-				end
-
-				if __8PNG == 1 then
-					image.save(timg, work_dir.."sce_sys/pic0.png", 1)
-				else
-					if scale then
-						image.save(timg, work_dir.."sce_sys/pic0.png", 1)
-					elseif setimg then
-						files.copy(__PATHSETS.."Set"..__SET.."/PIC0.PNG", work_dir.."sce_sys/")
-					else
-						image.save(timg, work_dir.."sce_sys/pic0.png", 1)
-					end
-				end
-
+			if src.type == "ME" then--PS1 Game
+				files.copy("bubbles/sce_sys_lman/ps1/pic0.png", work_dir.."sce_sys/")
 			else
-				files.copy("bubbles/sce_sys_lman/pic0.png", work_dir.."sce_sys/")
+				files.copy("bubbles/sce_sys_lman/psp/pic0.png", work_dir.."sce_sys/")
 			end
-
-			--"BG0.PNG", 	 w = 840,	h = 500
-			setimg = false
-			local bg0 = image.load(__PATHSETS.."Set"..__SET.."/BG0.PNG")
-			if not bg0 then
-				if timg then bg0 = timg end
-			else
-				setimg = true
-			end
-
-			if back2 then back2:blit(0,0) end
-			draw.fillrect(0,0,960,30, color.shine)
-			screen.print(10,10,strings.convert)
-			screen.print(950,10,"BG0.PNG",1, color.white, color.blue, __ARIGHT)
-
-			if bg0 then
-				bg0:resize(252,151)
-				bg0:center()
-				bg0:blit(480,272)
-			end
-			screen.flip()
-
-			if bg0 then
-				bg0:reset()
-				local scale = false
-				if bg0:getrealw() != 840 or bg0:getrealh() != 500 then
-					bg0 = bg0:copyscale(840,500)
-					scale = true
-				end
-
-				if __8PNG == 1 then
-					image.save(bg0, work_dir.."sce_sys/livearea/contents/bg0.png", 1)
-				else
-					if scale then
-						image.save(bg0, work_dir.."sce_sys/livearea/contents/bg0.png", 1)
-					elseif setimg then
-						files.copy(__PATHSETS.."Set"..__SET.."/BG0.PNG", work_dir.."sce_sys/livearea/contents/")
-					else
-						image.save(bg0, work_dir.."sce_sys/livearea/contents/bg0.png", 1)
-					end
-				end
-
-			else
-				if src.type == "ME" then--PS1 Game
-					files.copy("bubbles/sce_sys_lman/ps1/bg0.png", work_dir.."sce_sys/livearea/contents/")
-				else
-					files.copy("bubbles/sce_sys_lman/psp/bg0.png", work_dir.."sce_sys/livearea/contents/")
-				end
-			end
-
-			--TEMPLATE.XML
-			if files.exists(__PATHSETS.."Set"..__SET.."/TEMPLATE.XML") then
-				files.copy(__PATHSETS.."Set"..__SET.."/TEMPLATE.XML", work_dir.."sce_sys/livearea/contents/")
-			end
-
-			--FRAMEX.PNG 1 to 5
-			for i=1,5 do
-				if files.exists(__PATHSETS.."Set"..__SET.."/FRAME"..i..".PNG") then
-					if __8PNG == 1 then
-						local frame = image.load(__PATHSETS.."Set"..__SET.."/FRAME"..i..".PNG")
-						if frame then
-							image.save(frame, work_dir.."sce_sys/livearea/contents/FRAME"..i..".PNG", 1)
-						else
-							files.copy(__PATHSETS.."Set"..__SET.."/FRAME"..i..".PNG", work_dir.."sce_sys/livearea/contents/")
-						end
-					else
-						files.copy(__PATHSETS.."Set"..__SET.."/FRAME"..i..".PNG", work_dir.."sce_sys/livearea/contents/")
-					end
-				end
-			end
-
 		end
+
+		--"BG0.PNG", 	 w = 840,	h = 500
+		setimg = false
+		local bg0 = image.load(__PATHSETS..src.setpack.."/BG0.PNG")
+		if not bg0 then
+			if timg then bg0 = timg end
+		else
+			setimg = true
+		end
+
+		if back2 then back2:blit(0,0) end
+		draw.fillrect(0,0,960,30, color.shine)
+		screen.print(10,10,STRINGS_CONVERTING)
+		screen.print(950,10,"BG0.PNG",1, color.white, color.blue, __ARIGHT)
+
+		if bg0 then
+			bg0:scale(85)
+			bg0:center()
+			bg0:blit(480,272)
+		end
+		screen.flip()
+
+		if bg0 then
+			bg0:reset()
+			local scale = false
+			if bg0:getrealw() != 840 or bg0:getrealh() != 500 then
+				bg0 = bg0:copyscale(840,500)
+				scale = true
+			end
+
+			if __8PNG == 1 then
+				image.save(bg0, work_dir.."sce_sys/livearea/contents/bg0.png", 1)
+			else
+				if scale then
+					image.save(bg0, work_dir.."sce_sys/livearea/contents/bg0.png", 1)
+				elseif setimg then
+					files.copy(__PATHSETS..src.setpack.."/BG0.PNG", work_dir.."sce_sys/livearea/contents/")
+				else
+					image.save(bg0, work_dir.."sce_sys/livearea/contents/bg0.png", 1)
+				end
+			end
+
+		else
+			if src.type == "ME" then--PS1 Game
+				files.copy("bubbles/sce_sys_lman/ps1/bg0.png", work_dir.."sce_sys/livearea/contents/")
+			else
+				files.copy("bubbles/sce_sys_lman/psp/bg0.png", work_dir.."sce_sys/livearea/contents/")
+			end
+		end
+
+		--TEMPLATE.XML
+		if files.exists(__PATHSETS..src.setpack.."/TEMPLATE.XML") then
+			files.copy(__PATHSETS..src.setpack.."/TEMPLATE.XML", work_dir.."sce_sys/livearea/contents/")
+		end
+
+		--FRAMEX.PNG 1 to 5
+		for i=1,5 do
+			if files.exists(__PATHSETS..src.setpack.."/FRAME"..i..".PNG") then
+				if __8PNG == 1 then
+					local frame = image.load(__PATHSETS..src.setpack.."/FRAME"..i..".PNG")
+					if frame then
+						image.save(frame, work_dir.."sce_sys/livearea/contents/FRAME"..i..".PNG", 1)
+					else
+						files.copy(__PATHSETS..src.setpack.."/FRAME"..i..".PNG", work_dir.."sce_sys/livearea/contents/")
+					end
+				else
+					files.copy(__PATHSETS..src.setpack.."/FRAME"..i..".PNG", work_dir.."sce_sys/livearea/contents/")
+				end
+			end
+		end
+
+	end
+
 	buttons.homepopup(1)
 
 	-- Set SFO & TITLE
-	game.setsfo(work_dir.."sce_sys/PARAM.SFO", "STITLE", tostring(bubble_title), 0)
+	local fp_sfo = io.open(work_dir.."sce_sys/PARAM.SFO", "r+")
+	if fp_sfo then
+	
+		--STITLE offset
+		fp_sfo:seek("set",0x2C8)
+
+		local stitle = bubble_title
+		local fill = 51 - #stitle
+		for j=1,fill do
+			stitle = stitle..string.char(00)
+		end
+		fp_sfo:write(string.sub(stitle,1,51))
+
+		--TITLE offset
+		fp_sfo:seek("set",0x2FC)
+
+		local title = bubble_title
+		local fill = 127 - #title
+		for j=1,fill do
+			title = title..string.char(00)
+		end
+		fp_sfo:write(string.sub(title,1,127))
+
+		--TITLE_ID offset
+		fp_sfo:seek("set",0x37C)
+		fp_sfo:write(tostring(lastid))
+
+		--Close
+		fp_sfo:close()
+
+	end
+--[[
 	game.setsfo(work_dir.."sce_sys/PARAM.SFO", "TITLE", tostring(bubble_title), 0)
+	game.setsfo(work_dir.."sce_sys/PARAM.SFO", "STITLE", tostring(bubble_title), 0)
 	game.setsfo(work_dir.."sce_sys/PARAM.SFO", "TITLE_ID", tostring(lastid), 0)
+]]
 
 	-- Path ISO/CSO/PBP to BOOT.BIN
 	local fp = io.open(work_dir.."data/boot.bin", "r+")
 	if fp then
+
+		--Customized
+		fp:seek("set",0x0C)
+		fp:write(int2str(__CUSTOM))
+
 		local path2game = src.path
 		local fill = 256 - #src.path
 		for j=1,fill do
@@ -348,12 +387,6 @@ function bubbles.install(src)
 
 		fp:seek("set",0x20)
 		fp:write(path2game)
-
-		--Customized
-		if __CUSTOM == 1 then
-			fp:seek("set",0x0C)
-			fp:write(int2str(1))
-		end
 
 		--Close
 		fp:close()
@@ -386,7 +419,6 @@ function bubbles.install(src)
 				delete = false,
 				exist = true
 			}
-
 			table.insert(bubbles.list, entry)-- Insert entry in list of bubbles! :)
 
 			--Path2Game
@@ -394,15 +426,15 @@ function bubbles.install(src)
 
 			--Driver&Execute&Customized
 			bubbles.list[#bubbles.list].lines = {}
-			table.insert(bubbles.list[#bubbles.list].lines, 0)--Default: 0 Inferno
-			table.insert(bubbles.list[#bubbles.list].lines, 0)--Default: 0 Eboot.bin
-			table.insert(bubbles.list[#bubbles.list].lines, __CUSTOM)--Default: 0 Non Customized
+			table.insert(bubbles.list[#bubbles.list].lines, 0)			--Default: 0 Inferno
+			table.insert(bubbles.list[#bubbles.list].lines, 0)			--Default: 0 Eboot.bin
+			table.insert(bubbles.list[#bubbles.list].lines, __CUSTOM)	--Default: 1 Customized
 
 			bubbles.len = #bubbles.list
 			table.sort(bubbles.list ,function (a,b) return string.lower(a.id)<string.lower(b.id) end)
 		end
 	else
-		custom_msg(strings.errinst,0)
+		custom_msg(STRINGS_ERROR_INST,0)
 	end
 	----------------------------------------------------------------------------------------------------------------------------
 	files.delete("ux0:data/ABMVPK/")
@@ -437,8 +469,8 @@ function bubbles.settings()
 		if math.minmax(tonumber(os.date("%d%m")),2512,2512)== tonumber(os.date("%d%m")) then stars.render() end
 
 		draw.fillrect(0,0,960,30, 0x64545353) --UP
-		screen.print(480,5, strings.btitle, 1, color.white, color.blue, __ACENTER)
-		screen.print(950,5,strings.count.." "..bubbles.len, 1, color.red, color.gray, __ARIGHT)
+		screen.print(480,5, BUBBLES_TITLE, 1, color.white, color.blue, __ACENTER)
+		screen.print(950,5,BUBBLES_COUNT.." "..bubbles.len, 1, color.red, color.gray, __ARIGHT)
 
 		draw.fillrect(70,45,820,454,color.new(105,105,105,230))
 			draw.gradline(70,295,890,295,color.blue,color.green)
@@ -468,7 +500,7 @@ function bubbles.settings()
 						end
 					end
 				end
-				screen.print(480,y,bubbles.list[i].id or strings.unk,1.0,color.white,color.gray,__ACENTER)
+				screen.print(480,y,bubbles.list[i].id or STRINGS_UNK,1.0,color.white,color.gray,__ACENTER)
 
 				if bubbles.list[i].delete then
 					draw.fillrect(750,y-1,30,18,color.new(255,255,255,100))
@@ -493,7 +525,7 @@ function bubbles.settings()
 				screen.clip()
 			end
 
-			screen.print(480, 305, bubbles.list[scrids.sel].title or strings.unk,1,color.white,color.gray, __ACENTER)
+			screen.print(480, 305, bubbles.list[scrids.sel].title or STRINGS_UNK,1,color.white,color.gray, __ACENTER)
 
 			--Options txts
 			local y1=356
@@ -522,10 +554,10 @@ function bubbles.settings()
 			end
 
 			--Path2Game
-			if screen.textwidth(bubbles.list[scrids.sel].iso or strings.unk) > 765 then
-				xscr1 = screen.print(xscr1, 330, bubbles.list[scrids.sel].iso or strings.unk,1,ccolor,color.gray,__SLEFT,765)
+			if screen.textwidth(bubbles.list[scrids.sel].iso or STRINGS_UNK) > 765 then
+				xscr1 = screen.print(xscr1, 330, bubbles.list[scrids.sel].iso or STRINGS_UNK,1,ccolor,color.gray,__SLEFT,765)
 			else
-				screen.print(480, 330, bubbles.list[scrids.sel].iso or strings.unk,1,ccolor,color.gray, __ACENTER)
+				screen.print(480, 330, bubbles.list[scrids.sel].iso or STRINGS_UNK,1,ccolor,color.gray, __ACENTER)
 			end
 
 			--Driver&Execute&Customized
@@ -536,29 +568,29 @@ function bubbles.settings()
 			if not change then
 
 				if dels > 0 then
-					screen.print(80,448, "SELECT: "..strings.selmarks, 1, color.white, color.blue, __ALEFT)
-					screen.print(880,448, strings.startmarks, 1, color.white, color.blue, __ARIGHT)
+					screen.print(80,448, "SELECT: "..BUBBLES_SELSMARKS, 1, color.white, color.blue, __ALEFT)
+					screen.print(880,448, BUBBLES_STARTMARKS, 1, color.white, color.blue, __ARIGHT)
 				end
 
-				screen.print(80,475, SYMBOL_SQUARE..": "..strings.uninstall.." ("..dels..")", 1, color.white, color.blue, __ALEFT)
-				screen.print(480,475, SYMBOL_TRIANGLE..": "..strings.editboot, 1, color.white, color.blue, __ACENTER)
-				screen.print(880,475, SYMBOL_BACK2..": "..strings.inject, 1, color.white, color.blue, __ARIGHT)
+				screen.print(80,475, SYMBOL_SQUARE..": "..BUBBLES_UNINSTALL.." ("..dels..")", 1, color.white, color.blue, __ALEFT)
+				screen.print(480,475, SYMBOL_TRIANGLE..": "..BUBBLES_EDITBOOT_BIN, 1, color.white, color.blue, __ACENTER)
+				screen.print(880,475, SYMBOL_BACK2..": "..BUBBLES_INJECT, 1, color.white, color.blue, __ARIGHT)
 
-				screen.print(480,523, SYMBOL_BACK..": "..strings.togoback, 1, color.white, color.blue, __ACENTER)
+				screen.print(480,523, SYMBOL_BACK..": "..BUBBLES_GOTOBACK, 1, color.white, color.blue, __ACENTER)
 			else
 				if optsel == 4 then
-					screen.print(80,475, SYMBOL_BACK2..": "..strings.editpath, 1, color.white, color.blue, __ALEFT)
-					screen.print(880,475, SYMBOL_TRIANGLE..": "..strings.doneedit, 1, color.white, color.blue, __ARIGHT)
+					screen.print(80,475, SYMBOL_BACK2..": "..BUBBLES_EDITPATH, 1, color.white, color.blue, __ALEFT)
+					screen.print(880,475, SYMBOL_TRIANGLE..": "..BUBBLES_DONE_EDIT, 1, color.white, color.blue, __ARIGHT)
 				else
-					screen.print(80,475, "<- -> "..strings.toggle, 1, color.white, color.blue, __ALEFT)
-					screen.print(880,475, SYMBOL_TRIANGLE..": "..strings.doneedit, 1, color.white, color.blue, __ARIGHT)
+					screen.print(80,475, "<- -> "..BUBBLES_TOGGLE, 1, color.white, color.blue, __ALEFT)
+					screen.print(880,475, SYMBOL_TRIANGLE..": "..BUBBLES_DONE_EDIT, 1, color.white, color.blue, __ARIGHT)
 				end
 			end
 
 		else
-			screen.print(480,200, strings.notbubbles, 1, color.white, color.red, __ACENTER)
-			screen.print(480,230, strings.createbb, 1, color.white, color.red, __ACENTER)
-			screen.print(480,470, SYMBOL_BACK..": "..strings.togoback, 1, color.white, color.blue, __ACENTER)
+			screen.print(480,200, BUBBLES_NOT_BUBBLES, 1, color.white, color.red, __ACENTER)
+			screen.print(480,230, BUBBLES_CREAT_BB, 1, color.white, color.red, __ACENTER)
+			screen.print(480,470, SYMBOL_BACK..": "..BUBBLES_GOTOBACK, 1, color.white, color.blue, __ACENTER)
 		end
 		draw.fillrect(0,516,960,30, 0x64545353)--Down
 
@@ -589,7 +621,10 @@ function bubbles.settings()
 					if bubbles.list[scrids.sel].update then
 						local fp = io.open(bubbles.list[scrids.sel].boot, "r+")
 						if fp then
+
 							local offset = 0x04
+
+							--i=1 for drivers, i=2 for Execute, i=3 for Customized
 							for i=1,3 do
 								fp:seek("set", offset * i)
 								fp:write(int2str(bubbles.list[scrids.sel].lines[i]))
@@ -603,12 +638,6 @@ function bubbles.settings()
 
 							fp:seek("set",0x20)
 							fp:write(path2game)							
-
-							--Customized
-							if __CUSTOM == 1 then
-								fp:seek("set",0x0C)
-								fp:write(int2str(1))
-							end
 
 							fp:close()
 							if files.exists(bubbles.list[scrids.sel].iso) then bubbles.list[scrids.sel].exist = true else bubbles.list[scrids.sel].exist = false end
@@ -657,7 +686,7 @@ function bubbles.settings()
 					if dels>=1 then
 						local vbuff = screen.toimage()
 						local tmp,c = dels,0
-						if custom_msg(strings.uninstallbb.." "..dels,1) == true then
+						if custom_msg(BUBBLES_UNINSTALL_QUESTION.." "..dels.. " ? ",1) == true then
 							for i=bubbles.len,1,-1 do
 								if bubbles.list[i].delete then
 									if vbuff then vbuff:blit(0,0) end
@@ -707,7 +736,7 @@ function bubbles.settings()
 					end
 				end
 
-				if isTouched(125,80,270,215) and touch.front[1].released then--pressed then
+				if isTouched(125,80,270,215) and touch.front[1].released then
 					if click then
 						click = false
 						if crono2:time() <= 300 then -- Double click and in time to Go.
@@ -754,7 +783,7 @@ function bubbles.settings()
 				end
 
 				if buttons[accept] and optsel == 4 then
-					local new_path = osk.init(strings.path2game, bubbles.list[scrids.sel].iso or "", 128, __OSK_TYPE_DEFAULT, __OSK_MODE_TEXT)
+					local new_path = osk.init(BUBBLES_PATH2GAME, bubbles.list[scrids.sel].iso or "", 128, __OSK_TYPE_DEFAULT, __OSK_MODE_TEXT)
 					if not new_path or (string.len(new_path)<=0) then new_path = bubbles.list[scrids.sel].iso end
 					bubbles.list[scrids.sel].iso = new_path
 					if files.exists(bubbles.list[scrids.sel].iso) then bubbles.list[scrids.sel].exist = true else bubbles.list[scrids.sel].exist = false end
@@ -806,8 +835,8 @@ function bubbles.edit(obj, simg)
 		if math.minmax(tonumber(os.date("%d%m")),2512,2512)== tonumber(os.date("%d%m")) then stars.render() end
 
 		draw.fillrect(0,0,960,30, 0x64545353) --UP
-		screen.print(480,5, strings.redit, 1, color.white, color.blue, __ACENTER)
-		screen.print(950,5, strings.count.." "..scrids.maxim, 1, color.red, color.gray, __ARIGHT)
+		screen.print(480,5, BUBBLES_RE_EDIT, 1, color.white, color.blue, __ACENTER)
+		screen.print(950,5, BUBBLES_COUNT.." "..scrids.maxim, 1, color.red, color.gray, __ARIGHT)
 
 		if scrids.maxim > 0 then
 
@@ -846,7 +875,7 @@ function bubbles.edit(obj, simg)
 				preview:blit(700,84)
 			end
 
-			local x1 = screen.print(15,430, strings.editbubbles, 1, color.white, color.blue, __ALEFT)
+			local x1 = screen.print(15,430, BUBBLES_EDIT_BB, 1, color.white, color.blue, __ALEFT)
 			screen.print(15,455, obj.id, 1, color.white, color.blue, __ALEFT)
 			local x2 = screen.print(15,490, obj.title, 1, color.white, color.blue, __ALEFT)
 			
@@ -860,17 +889,17 @@ function bubbles.edit(obj, simg)
 			end
 
 			if inside and find_png then
-				screen.print(480,523,strings.reinstall,1.0,color.green,color.gray,__ACENTER)
+				screen.print(480,523,BUBBLES_REINSTALL,1.0,color.green,color.gray,__ACENTER)
 			end
 
 		else
-			screen.print(480,230, strings.notresources, 1, color.white, color.red, __ACENTER)
+			screen.print(480,230, BUBBLES_NOTRESOURCES, 1, color.white, color.red, __ACENTER)
 		end
 
 		if inside then
-			screen.print(950,490, SYMBOL_BACK..": "..strings.togoback, 1, color.white, color.blue, __ARIGHT)
+			screen.print(950,490, SYMBOL_BACK..": "..BUBBLES_GOTOBACK, 1, color.white, color.blue, __ARIGHT)
 		else
-			screen.print(480,523, SYMBOL_BACK..": "..strings.togoback, 1, color.white, color.blue, __ACENTER)
+			screen.print(480,523, SYMBOL_BACK..": "..BUBBLES_GOTOBACK, 1, color.white, color.blue, __ACENTER)
 		end
 
 		draw.fillrect(0,516,960,30, 0x64545353)--Down
@@ -958,13 +987,13 @@ function bubbles.edit(obj, simg)
 
 									img = image.load(tmp[j].path)
 									if img then
-										img:resize(252,151)
+										img:scale(75)
 										img:center()
 										img:blit(480,272)
 									end
 
 									draw.fillrect(0,0,960,30, color.shine)
-									screen.print(10,10,strings.convert)
+									screen.print(10,10,STRINGS_CONVERTING)
 									screen.print(950,10,resources[i].name,1, color.white, color.blue, __ARIGHT)
 									screen.flip()
 
@@ -1002,13 +1031,13 @@ function bubbles.edit(obj, simg)
 									if i > 5 then
 										img = image.load(tmp[j].path)
 										if img then
-											img:resize(252,151)
+											img:scale(75)
 											img:center()
 											img:blit(480,272)
 										end
 
 										draw.fillrect(0,0,960,30, color.shine)
-										screen.print(10,10,strings.convert)
+										screen.print(10,10,STRINGS_CONVERTING)
 										screen.print(950,10,resources[i].name,1, color.white, color.blue, __ARIGHT)
 										screen.flip()
 
@@ -1039,7 +1068,7 @@ function bubbles.edit(obj, simg)
 						for i=1,#resources do
 							files.copy(path_tmp..resources[i].name, obj.path..resources[i].restore)
 						end
-						custom_msg(strings.errinst,0)
+						custom_msg(STRINGS_ERROR_INST,0)
 					end
 					buttons.read()--flush
 					files.delete(path_tmp)
